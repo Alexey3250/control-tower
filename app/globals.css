@@ -1,0 +1,327 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Jetex Network Operations Control Tower
+ *
+ * Palette mirrors the public Jetex visual identity at jetex.com:
+ *   - Clean white / soft-cream surfaces
+ *   - Signature orange accent for primary action and brand moments
+ *   - Charcoal text, soft gray separators
+ *
+ * Existing components reference --jx-* tokens by name. We keep the names
+ * (--jx-bg, --jx-card, --jx-gold, --jx-red, etc.) so the rest of the
+ * codebase rebrands automatically when the tokens are updated below.
+ */
+
+:root {
+  /* Surfaces */
+  --jx-bg: #ffffff;
+  --jx-panel: #fafafa;
+  --jx-card: #ffffff;
+  --jx-elev: #ffffff;
+
+  /* Borders */
+  --jx-border: #ececec;
+  --jx-border-strong: #d6d6d6;
+
+  /* Type */
+  --jx-text: #111111;
+  --jx-muted: #5a5a5a;
+  --jx-subtle: #8a8a8a;
+
+  /* Brand orange family */
+  --jx-orange: #f37021;
+  --jx-orange-soft: #ff8a3c;
+  --jx-orange-deep: #d45a14;
+  --jx-orange-tint: #ffe9d8;
+
+  /* Legacy aliases kept so older components rebrand automatically.
+     "red" = primary brand action; "gold" = warmer accent for premium tiers. */
+  --jx-red: var(--jx-orange);
+  --jx-red-soft: var(--jx-orange-soft);
+  --jx-gold: var(--jx-orange-deep);
+  --jx-gold-soft: #e08a4d;
+
+  /* Status */
+  --jx-status-healthy: #2f8f5e;
+  --jx-status-watch: #d4830f;
+  --jx-status-critical: #d24923;
+
+  --radius: 0.625rem;
+
+  --background: var(--jx-bg);
+  --foreground: var(--jx-text);
+  --card: var(--jx-card);
+  --card-foreground: var(--jx-text);
+  --popover: var(--jx-elev);
+  --popover-foreground: var(--jx-text);
+  --primary: var(--jx-orange);
+  --primary-foreground: #ffffff;
+  --secondary: var(--jx-panel);
+  --secondary-foreground: var(--jx-text);
+  --muted: var(--jx-panel);
+  --muted-foreground: var(--jx-muted);
+  --accent: var(--jx-orange);
+  --accent-foreground: #ffffff;
+  --destructive: var(--jx-status-critical);
+  --destructive-foreground: #ffffff;
+  --border: var(--jx-border);
+  --input: var(--jx-border);
+  --ring: var(--jx-orange);
+
+  --chart-1: var(--jx-orange);
+  --chart-2: var(--jx-orange-deep);
+  --chart-3: #1f6aa6;
+  --chart-4: var(--jx-status-watch);
+  --chart-5: #5a5a5a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-jx-bg: var(--jx-bg);
+  --color-jx-panel: var(--jx-panel);
+  --color-jx-card: var(--jx-card);
+  --color-jx-elev: var(--jx-elev);
+  --color-jx-border: var(--jx-border);
+  --color-jx-border-strong: var(--jx-border-strong);
+  --color-jx-text: var(--jx-text);
+  --color-jx-muted: var(--jx-muted);
+  --color-jx-subtle: var(--jx-subtle);
+  --color-jx-red: var(--jx-red);
+  --color-jx-red-soft: var(--jx-red-soft);
+  --color-jx-gold: var(--jx-gold);
+  --color-jx-gold-soft: var(--jx-gold-soft);
+  --color-jx-orange: var(--jx-orange);
+  --color-jx-orange-soft: var(--jx-orange-soft);
+  --color-jx-orange-deep: var(--jx-orange-deep);
+  --color-jx-orange-tint: var(--jx-orange-tint);
+  --color-jx-healthy: var(--jx-status-healthy);
+  --color-jx-watch: var(--jx-status-watch);
+  --color-jx-critical: var(--jx-status-critical);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Single-family typography per Jetex minimalist brief — Open Sans only. */
+  --font-sans: var(--font-open-sans);
+  --font-display: var(--font-open-sans);
+  --font-mono: var(--font-open-sans);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+html,
+body {
+  background: var(--jx-bg);
+  color: var(--jx-text);
+}
+
+body {
+  font-family: var(--font-sans), "Open Sans", system-ui, -apple-system,
+    "Segoe UI", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * `font-display` is kept as a class for backwards compatibility but now
+ * renders as a tightened sans-serif heading (Open Sans 700, slightly tighter
+ * tracking). Tabular numerals applied globally to keep KPI tables aligned
+ * despite using a proportional font everywhere.
+ */
+.font-display {
+  font-family: var(--font-sans), "Open Sans", system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.font-mono,
+[class*="font-mono"] {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.jx-panel {
+  background: var(--jx-panel);
+  border: 1px solid var(--jx-border);
+}
+
+.jx-card {
+  background: var(--jx-card);
+  border: 1px solid var(--jx-border);
+  border-radius: var(--radius);
+  /* Subtle two-layer shadow gives a hairline of depth without going dark. */
+  box-shadow:
+    0 1px 0 rgba(17, 17, 17, 0.02),
+    0 1px 3px rgba(17, 17, 17, 0.04);
+}
+
+/* Stronger card variant — used for primary KPI tiles and hero blocks. */
+.jx-card-raised {
+  background: var(--jx-card);
+  border: 1px solid var(--jx-border);
+  border-radius: var(--radius);
+  box-shadow:
+    0 1px 0 rgba(17, 17, 17, 0.025),
+    0 4px 12px -2px rgba(17, 17, 17, 0.06),
+    0 8px 24px -8px rgba(17, 17, 17, 0.05);
+}
+
+/* Soft gradient surface for secondary panels — adds depth, never reads dark. */
+.jx-surface {
+  background:
+    linear-gradient(180deg, #ffffff 0%, #fbfbfb 100%);
+  border: 1px solid var(--jx-border);
+  border-radius: var(--radius);
+}
+
+.jx-divider {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--jx-border-strong),
+    transparent
+  );
+}
+
+.jx-grid-bg {
+  background-image:
+    linear-gradient(to right, rgba(17, 17, 17, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(17, 17, 17, 0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.jx-orange-line {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(243, 112, 33, 0.35) 30%,
+    rgba(243, 112, 33, 0.85) 50%,
+    rgba(243, 112, 33, 0.35) 70%,
+    transparent 100%
+  );
+}
+
+/* Legacy alias used by previous gold-line callsites. */
+.jx-gold-line {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(243, 112, 33, 0.35) 30%,
+    rgba(243, 112, 33, 0.85) 50%,
+    rgba(243, 112, 33, 0.35) 70%,
+    transparent 100%
+  );
+}
+
+.jx-hero-bg {
+  background:
+    radial-gradient(
+      ellipse 60% 50% at 100% 0%,
+      rgba(243, 112, 33, 0.08) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 80% 60% at 0% 100%,
+      rgba(243, 112, 33, 0.04) 0%,
+      transparent 55%
+    ),
+    linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
+  border: 1px solid var(--jx-border);
+  border-radius: var(--radius);
+  position: relative;
+  overflow: hidden;
+}
+
+.jx-hero-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(17, 17, 17, 0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(17, 17, 17, 0.025) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+
+.jx-hero-bg::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(243, 112, 33, 0.85),
+    transparent
+  );
+}
+
+/* Scrollbar — slim & light to match the white surface. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--jx-panel);
+}
+::-webkit-scrollbar-thumb {
+  background: #d6d6d6;
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #b0b0b0;
+}
+
+/* Map popup re-skin — maplibre defaults are dark; force white. */
+.maplibregl-popup-content {
+  background: var(--jx-card) !important;
+  color: var(--jx-text) !important;
+  border: 1px solid var(--jx-border);
+  box-shadow: 0 10px 30px rgba(17, 17, 17, 0.12);
+  padding: 0 !important;
+  border-radius: 8px !important;
+}
+.maplibregl-popup-tip {
+  border-top-color: var(--jx-card) !important;
+  border-bottom-color: var(--jx-card) !important;
+}
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-attrib a {
+  background: rgba(255, 255, 255, 0.85) !important;
+  color: var(--jx-muted) !important;
+}

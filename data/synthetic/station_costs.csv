@@ -1,0 +1,9 @@
+month,icao,budget_usd,actual_usd,variance_pct,largest_driver
+2026-05,OMDB,420000,394800,-6.0,overtime
+2026-05,OMDW,455000,435890,-4.2,fuel handling
+2026-05,OMAA,490000,478240,-2.4,vendor surcharge
+2026-05,LFPB,525000,521850,-0.6,maintenance
+2026-05,EGKB,560000,566720,1.2,overtime
+2026-05,LIRA,595000,612850,3.0,fuel handling
+2026-05,KMIA,630000,660240,4.8,vendor surcharge
+2026-05,RJTT,665000,708890,6.6,maintenance

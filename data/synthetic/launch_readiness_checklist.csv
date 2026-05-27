@@ -1,0 +1,25 @@
+icao,station,workstream,weight,progress_pct,rag,owner
+EGGW,London Luton,permits,18,92,green,Ops Readiness
+LSGG,Geneva,permits,18,83,green,Ops Readiness
+OEJN,Jeddah,permits,18,74,green,Ops Readiness
+EGGW,London Luton,staffing,14,86,green,People
+LSGG,Geneva,staffing,14,77,green,People
+OEJN,Jeddah,staffing,14,68,green,People
+EGGW,London Luton,equipment,16,80,green,Procurement
+LSGG,Geneva,equipment,16,71,green,Procurement
+OEJN,Jeddah,equipment,16,62,green,Procurement
+EGGW,London Luton,it,10,74,green,Technology
+LSGG,Geneva,it,10,65,green,Technology
+OEJN,Jeddah,it,10,56,green,Technology
+EGGW,London Luton,training,10,68,green,Ops Readiness
+LSGG,Geneva,training,10,59,green,Ops Readiness
+OEJN,Jeddah,training,10,50,amber,Ops Readiness
+EGGW,London Luton,trial_ops,12,62,green,People
+LSGG,Geneva,trial_ops,12,53,amber,People
+OEJN,Jeddah,trial_ops,12,44,amber,People
+EGGW,London Luton,regulatory,10,56,amber,Procurement
+LSGG,Geneva,regulatory,10,47,amber,Procurement
+OEJN,Jeddah,regulatory,10,38,amber,Procurement
+EGGW,London Luton,go_live,10,50,amber,Technology
+LSGG,Geneva,go_live,10,41,amber,Technology
+OEJN,Jeddah,go_live,10,32,red,Technology

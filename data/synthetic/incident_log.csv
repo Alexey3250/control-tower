@@ -1,0 +1,9 @@
+incident_id,date,icao,severity,category,status,summary
+I-001,2026-05-26,OMDB,low,safety,open,"Synthetic ramp workflow exception"
+I-002,2026-05-26,OMDW,medium,quality,closed,"Synthetic catering workflow exception"
+I-003,2026-05-26,OMAA,high,compliance,closed,"Synthetic permit workflow exception"
+I-004,2026-05-26,LFPB,low,safety,closed,"Synthetic ramp workflow exception"
+I-005,2026-05-26,EGKB,medium,quality,open,"Synthetic catering workflow exception"
+I-006,2026-05-26,LIRA,high,compliance,closed,"Synthetic permit workflow exception"
+I-007,2026-05-26,KMIA,low,safety,closed,"Synthetic ramp workflow exception"
+I-008,2026-05-26,RJTT,medium,quality,closed,"Synthetic catering workflow exception"

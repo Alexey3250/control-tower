@@ -1,0 +1,9 @@
+week,icao,vendor,category,sla_target_pct,actual_pct,breaches
+2026-W21,OMDB,Falcon Fuelers,fueling,95,88,0
+2026-W21,OMDW,Royal Galley,catering,95,89,1
+2026-W21,OMAA,Apex Ground Services,ground_handling,95,90,2
+2026-W21,LFPB,Prestige Cars,transport,95,91,3
+2026-W21,EGKB,Falcon Fuelers,fueling,95,92,4
+2026-W21,LIRA,Royal Galley,catering,95,93,0
+2026-W21,KMIA,Apex Ground Services,ground_handling,95,94,1
+2026-W21,RJTT,Prestige Cars,transport,95,95,2
