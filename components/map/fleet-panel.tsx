@@ -22,6 +22,13 @@ interface FleetPanelProps {
   aircraft: AircraftState[];
   fetchedAt?: string;
   onFocus: (a: AircraftState) => void;
+  /**
+   * Whether the side panel starts expanded. We default to `true` for the
+   * desktop case, but `MapView` passes `false` on phones so the map gets
+   * the full viewport on first paint and the user opts in via the
+   * collapsed "Fleet ({n})" pill.
+   */
+  defaultOpen?: boolean;
 }
 
 function statusMeta(status: FleetStatus) {
@@ -63,8 +70,22 @@ function timeAgo(unix: number) {
   return `${Math.round(diff / 86400)}d ago`;
 }
 
-export function FleetPanel({ aircraft, fetchedAt, onFocus }: FleetPanelProps) {
-  const [open, setOpen] = React.useState(true);
+export function FleetPanel({
+  aircraft,
+  fetchedAt,
+  onFocus,
+  defaultOpen = true,
+}: FleetPanelProps) {
+  const [open, setOpen] = React.useState(defaultOpen);
+  /* When the viewport breakpoint flips (orientation / window resize),
+     reset to the new default. We use the "render-phase resync" pattern
+     React 19 recommends over a `useEffect(() => setX)` to avoid the
+     cascading-renders lint and the extra paint. */
+  const [prevDefault, setPrevDefault] = React.useState(defaultOpen);
+  if (prevDefault !== defaultOpen) {
+    setPrevDefault(defaultOpen);
+    setOpen(defaultOpen);
+  }
   const [filter, setFilter] = React.useState<FleetStatus | "all">("all");
 
   const counts = React.useMemo(() => {
@@ -94,8 +115,11 @@ export function FleetPanel({ aircraft, fetchedAt, onFocus }: FleetPanelProps) {
   );
 
   if (!open) {
+    /* Closed state: pinned bottom-right on mobile so it doesn't fight the
+       top toolbar; pinned top-right on desktop so the user still sees it
+       next to the layer toggles. */
     return (
-      <div className="absolute right-3 md:right-4 top-20 pointer-events-auto">
+      <div className="absolute md:top-20 md:right-4 right-3 bottom-3 md:bottom-auto pointer-events-auto">
         <Button
           size="sm"
           variant="outline"
@@ -111,7 +135,7 @@ export function FleetPanel({ aircraft, fetchedAt, onFocus }: FleetPanelProps) {
   }
 
   return (
-    <div className="absolute right-3 md:right-4 top-20 bottom-6 w-[calc(100vw-1.5rem)] sm:w-[320px] md:w-[340px] max-w-[340px] flex flex-col bg-white/98 border border-jx-border rounded-lg shadow-xl pointer-events-auto overflow-hidden">
+    <div className="absolute right-3 md:right-4 top-20 bottom-3 md:bottom-6 w-[calc(100vw-1.5rem)] sm:w-[320px] md:w-[340px] max-w-[340px] flex flex-col bg-white/98 border border-jx-border rounded-lg shadow-xl pointer-events-auto overflow-hidden">
       <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-jx-border bg-jx-panel">
         <div>
           <div className="flex items-center gap-2">

@@ -31,9 +31,7 @@ import { TrendStrip } from "@/components/kpi/trend-strip";
 import { ActionCards } from "@/components/overview/action-cards";
 import { RiskWeightSimulator } from "@/components/overview/risk-weight-simulator";
 import type { StationKpiBundle, StationStatus } from "@/lib/types";
-import Image from "next/image";
 import { BUILDER } from "@/config/builder";
-import { LinkedInIcon, WhatsAppIcon } from "@/components/shell/builder-icons";
 
 /** Per-region rollup used by the region-snapshot strip. */
 function regionRollup(snapshot: StationKpiBundle[]) {
@@ -106,84 +104,97 @@ export default function NetworkOverviewPage() {
 
       <div className="flex-1 p-4 md:p-6 space-y-5 md:space-y-6">
         {/*
-          Portfolio + builder strip.
-          On the LEFT: portrait + name + role pitch so the HR person sees who
-          built this the moment the page loads. On the RIGHT: direct
-          LinkedIn + WhatsApp buttons (branded colours so they're hard to
-          miss), plus the project status badges.
+          Project hero — explains to a first-time visitor (CV reviewer, HR,
+          hiring manager) what they're looking at within the first ~3
+          seconds. The headline is the FBO ops-director question the whole
+          dashboard answers; the body summarises scope + data provenance;
+          the right rail shows the live network mix. Builder identity is
+          intentionally NOT here anymore — it lives in the sidebar, footer
+          and /about page so this view reads as a *product*, not a CV.
         */}
-        <section className="rounded-lg border border-jx-border bg-white px-4 md:px-5 py-3 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <Link
-              href="/about"
-              className="shrink-0 group"
-              title={`About ${BUILDER.name}`}
-            >
-              <Image
-                src={BUILDER.photo}
-                alt={BUILDER.name}
-                width={44}
-                height={44}
-                className="h-11 w-11 rounded-full object-cover ring-2 ring-white shadow-sm group-hover:ring-jx-orange/40 transition"
-              />
-            </Link>
-            <div className="leading-tight min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-[0.22em] text-jx-orange font-semibold">
+        <section className="rounded-lg border border-jx-border bg-white shadow-sm overflow-hidden">
+          <div className="flex flex-col lg:flex-row">
+            <div className="flex-1 p-5 md:p-6 space-y-3">
+              <div className="flex items-center gap-2 flex-wrap text-[10px] uppercase tracking-[0.22em] font-semibold">
+                <span className="inline-flex items-center gap-1 text-jx-orange">
                   <Sparkles className="h-3 w-3" />
-                  Portfolio · built by
+                  FBO Network Operations Control Tower
                 </span>
-                <Link
-                  href="/about"
-                  className="text-sm font-semibold text-jx-text hover:text-jx-orange transition-colors"
-                >
-                  {BUILDER.name}
-                </Link>
-                <span className="text-[11px] text-jx-muted hidden md:inline">
-                  · {BUILDER.tagline}
+                <span className="text-jx-subtle">·</span>
+                <span className="text-jx-muted normal-case tracking-normal text-[11px]">
+                  decision-support for senior ops managers
                 </span>
               </div>
-              <div className="text-[11px] text-jx-muted mt-0.5 flex items-center gap-1.5 flex-wrap">
-                <span>
-                  {agg.totalStations} Jetex destinations · {regions.length}{" "}
-                  regions
+              <h2 className="text-lg md:text-2xl text-jx-text font-semibold leading-snug max-w-3xl">
+                Which station needs attention today —
+                <span className="text-jx-orange">
+                  {" "}
+                  and what should we do about it?
                 </span>
-                <span className="hidden md:inline text-jx-subtle">·</span>
-                <span className="hidden md:inline">
-                  live OpenSky · synthetic ops KPIs
+              </h2>
+              <p className="text-[13px] text-jx-muted leading-relaxed max-w-3xl">
+                Live decision dashboard across{" "}
+                <span className="text-jx-text font-medium">
+                  {agg.totalStations} Jetex destinations
+                </span>{" "}
+                in {regions.length} regions. Aircraft positions from{" "}
+                <span className="text-jx-text">OpenSky</span>, weather from{" "}
+                <span className="text-jx-text">NOAA</span> /{" "}
+                <span className="text-jx-text">Open-Meteo</span>, internal ops
+                KPIs are deterministic synthetic data clearly labelled as such.
+                Six modules — Network Overview, Operations Map, Fleet
+                Intelligence, Station Risk, Launch Tracker, Feasibility Studio,
+                Vendor Scorecard.
+              </p>
+              <div className="flex items-center gap-2 flex-wrap pt-1">
+                <Button asChild variant="gold" size="sm">
+                  <Link href="/map">
+                    Open live map
+                    <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/about">
+                    <Info className="h-3 w-3" />
+                    How it&apos;s built · data provenance
+                  </Link>
+                </Button>
+                <span className="text-[11px] text-jx-subtle ml-1 hidden sm:inline">
+                  portfolio project — not affiliated with Jetex ·{" "}
+                  <Link
+                    href="/about"
+                    className="text-jx-orange hover:underline"
+                  >
+                    by {BUILDER.name}
+                  </Link>
                 </span>
-                <Link
-                  href="/about"
-                  className="text-jx-orange hover:underline inline-flex items-center gap-0.5"
-                >
-                  <Info className="h-3 w-3" />
-                  About
-                </Link>
               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <a
-              href={BUILDER.links.linkedinUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-md bg-[#0a66c2] hover:bg-[#0856a8] text-white px-2.5 py-1.5 text-[11px] font-semibold transition-colors"
-            >
-              <LinkedInIcon size={11} /> LinkedIn
-            </a>
-            <a
-              href={BUILDER.links.whatsappUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-md bg-[#25d366] hover:bg-[#1ebe5d] text-white px-2.5 py-1.5 text-[11px] font-semibold transition-colors"
-              title={`Message ${BUILDER.name} on WhatsApp`}
-            >
-              <WhatsAppIcon size={11} /> WhatsApp
-            </a>
-            <span className="hidden md:inline-block w-px h-5 bg-jx-border mx-0.5" />
-            <Badge variant="healthy">{agg.stationsHealthy} healthy</Badge>
-            <Badge variant="watch">{agg.stationsWatch} watch</Badge>
-            <Badge variant="critical">{agg.stationsCritical} critical</Badge>
+
+            {/* Right rail — live network mix at a glance. Stacks under the
+                hero copy on tablets, sits to the right on desktop. */}
+            <div className="lg:w-[260px] shrink-0 border-t lg:border-t-0 lg:border-l border-jx-border bg-jx-panel/40 p-5 md:p-6 flex lg:flex-col items-center lg:items-stretch justify-between gap-4">
+              <div className="text-[10px] uppercase tracking-[0.22em] font-semibold text-jx-muted">
+                Network mix · now
+              </div>
+              <div className="flex lg:flex-col gap-3 lg:gap-2 flex-1 lg:flex-initial">
+                <NetworkMixRow
+                  label="healthy"
+                  value={agg.stationsHealthy}
+                  color="var(--jx-status-healthy)"
+                />
+                <NetworkMixRow
+                  label="watch"
+                  value={agg.stationsWatch}
+                  color="var(--jx-status-watch)"
+                />
+                <NetworkMixRow
+                  label="critical"
+                  value={agg.stationsCritical}
+                  color="var(--jx-status-critical)"
+                />
+              </div>
+            </div>
           </div>
         </section>
 
@@ -445,6 +456,35 @@ function KV({ label, value }: { label: string; value: string }) {
         {label}
       </span>
       <span className="font-mono text-jx-text">{value}</span>
+    </div>
+  );
+}
+
+/** One row of the hero's "Network mix · now" rail. */
+function NetworkMixRow({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color: string;
+}) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span
+        className="inline-block h-2 w-2 rounded-full shrink-0"
+        style={{ background: color }}
+      />
+      <span
+        className="font-mono text-2xl font-bold leading-none"
+        style={{ color }}
+      >
+        {value}
+      </span>
+      <span className="text-[11px] uppercase tracking-wider text-jx-muted">
+        {label}
+      </span>
     </div>
   );
 }

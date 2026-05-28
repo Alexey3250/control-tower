@@ -7,10 +7,10 @@ import {
 export default function Loading() {
   return (
     <div className="flex-1 flex flex-col min-w-0">
-      <TopbarSkeleton title="Fleet Intelligence" />
-      <div className="flex-1 p-4 md:p-6 space-y-5 md:space-y-6">
+      <TopbarSkeleton title="Station Risk Score" />
+      <div className="flex-1 p-4 md:p-6 space-y-6">
         <KpiStripSkeleton count={4} />
-        <TableSkeleton rows={10} cols={6} />
+        <TableSkeleton rows={12} cols={7} />
       </div>
     </div>
   );

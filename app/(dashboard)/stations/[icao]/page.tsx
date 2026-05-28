@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, MapPin } from "lucide-react";
@@ -11,6 +12,7 @@ import { StationTrendChart } from "@/components/station/trend-chart";
 import { getStationBundle } from "@/lib/data/api";
 import { getAviationWeather } from "@/lib/data/noaa";
 import { formatNumber, formatPercent } from "@/lib/utils";
+import { Skeleton, LiveDataPulse } from "@/components/ui/skeleton";
 
 export default async function StationPage({
   params,
@@ -20,14 +22,7 @@ export default async function StationPage({
   const { icao } = await params;
   const bundle = getStationBundle(icao);
   if (!bundle) notFound();
-  const { station, current, trend, weather, metar, taf } = bundle;
-  const liveWeather = await getAviationWeather(station.icao);
-  const displayMetar = liveWeather.metar ?? metar ?? "METAR unavailable";
-  const displayTaf = liveWeather.taf ?? taf ?? "TAF unavailable";
-  const displayWind = liveWeather.windKt ?? weather?.windKt;
-  const displayGust = liveWeather.gustKt ?? weather?.gustKt;
-  const displayTemp = liveWeather.tempC ?? weather?.tempC;
-  const displayCondition = liveWeather.condition ?? weather?.condition;
+  const { station, current, trend } = bundle;
 
   return (
     <div className="flex-1 flex flex-col min-w-0">
@@ -107,50 +102,16 @@ export default async function StationPage({
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <Card>
-            <CardHeader>
-              <CardTitle>Live weather</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Badge
-                  variant={liveWeather.source === "NOAA" ? "gold" : "secondary"}
-                >
-                  {liveWeather.source === "NOAA" ? "NOAA live" : "fallback"}
-                </Badge>
-                {liveWeather.observedAt ? (
-                  <span className="text-xs text-jx-muted">
-                    observed {liveWeather.observedAt}
-                  </span>
-                ) : null}
-              </div>
-              <div className="font-mono text-sm text-jx-text">{displayMetar}</div>
-              <div className="font-mono text-xs text-jx-muted">{displayTaf}</div>
-              {displayWind !== undefined ||
-              displayGust !== undefined ||
-              displayTemp !== undefined ? (
-                <div className="grid grid-cols-3 gap-3 pt-3">
-                  <Metric
-                    label="Wind"
-                    value={displayWind !== undefined ? `${displayWind}kt` : "—"}
-                  />
-                  <Metric
-                    label="Gust"
-                    value={displayGust !== undefined ? `${displayGust}kt` : "—"}
-                  />
-                  <Metric
-                    label="Temp"
-                    value={displayTemp !== undefined ? `${displayTemp}°C` : "—"}
-                  />
-                </div>
-              ) : null}
-              {displayCondition ? (
-                <div className="text-xs text-jx-muted">
-                  Condition: <span className="font-mono">{displayCondition}</span>
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
+          {/* NOAA live weather can stall — stream it in. The rest of the
+              station page is already interactive while this resolves. */}
+          <Suspense fallback={<WeatherFallback />}>
+            <LiveWeatherCard
+              icao={station.icao}
+              fallbackMetar={bundle.metar}
+              fallbackTaf={bundle.taf}
+              fallback={bundle.weather}
+            />
+          </Suspense>
 
           <Card>
             <CardHeader>
@@ -189,6 +150,101 @@ export default async function StationPage({
         </Card>
       </div>
     </div>
+  );
+}
+
+async function LiveWeatherCard({
+  icao,
+  fallbackMetar,
+  fallbackTaf,
+  fallback,
+}: {
+  icao: string;
+  fallbackMetar?: string;
+  fallbackTaf?: string;
+  fallback?: {
+    windKt: number;
+    gustKt: number;
+    visM: number;
+    ceilingFt: number;
+    tempC: number;
+    condition: string;
+  };
+}) {
+  const liveWeather = await getAviationWeather(icao);
+  const displayMetar = liveWeather.metar ?? fallbackMetar ?? "METAR unavailable";
+  const displayTaf = liveWeather.taf ?? fallbackTaf ?? "TAF unavailable";
+  const displayWind = liveWeather.windKt ?? fallback?.windKt;
+  const displayGust = liveWeather.gustKt ?? fallback?.gustKt;
+  const displayTemp = liveWeather.tempC ?? fallback?.tempC;
+  const displayCondition = liveWeather.condition ?? fallback?.condition;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Live weather</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Badge
+            variant={liveWeather.source === "NOAA" ? "gold" : "secondary"}
+          >
+            {liveWeather.source === "NOAA" ? "NOAA live" : "fallback"}
+          </Badge>
+          {liveWeather.observedAt ? (
+            <span className="text-xs text-jx-muted">
+              observed {liveWeather.observedAt}
+            </span>
+          ) : null}
+        </div>
+        <div className="font-mono text-sm text-jx-text">{displayMetar}</div>
+        <div className="font-mono text-xs text-jx-muted">{displayTaf}</div>
+        {displayWind !== undefined ||
+        displayGust !== undefined ||
+        displayTemp !== undefined ? (
+          <div className="grid grid-cols-3 gap-3 pt-3">
+            <Metric
+              label="Wind"
+              value={displayWind !== undefined ? `${displayWind}kt` : "—"}
+            />
+            <Metric
+              label="Gust"
+              value={displayGust !== undefined ? `${displayGust}kt` : "—"}
+            />
+            <Metric
+              label="Temp"
+              value={displayTemp !== undefined ? `${displayTemp}°C` : "—"}
+            />
+          </div>
+        ) : null}
+        {displayCondition ? (
+          <div className="text-xs text-jx-muted">
+            Condition: <span className="font-mono">{displayCondition}</span>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function WeatherFallback() {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Live weather</CardTitle>
+        <LiveDataPulse label="Streaming NOAA" />
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <Skeleton className="h-5 w-20" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-3/4" />
+        <div className="grid grid-cols-3 gap-3 pt-3">
+          <Skeleton className="h-12" />
+          <Skeleton className="h-12" />
+          <Skeleton className="h-12" />
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

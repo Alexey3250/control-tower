@@ -1,7 +1,9 @@
 "use client";
 
-import { Navigation, PlaneLanding } from "lucide-react";
+import * as React from "react";
+import { ChevronDown, Navigation, PlaneLanding } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { haversineNm, msToKt } from "@/lib/geo";
 import type { AircraftState } from "@/lib/data/opensky";
 import type { StationKpiBundle } from "@/lib/types";
@@ -75,20 +77,62 @@ function inferDestination(
 export function ActiveDestinationsPanel({
   aircraft,
   snapshot,
+  defaultOpen = true,
 }: {
   aircraft: AircraftState[];
   snapshot: StationKpiBundle[];
+  /** See `FleetPanel.defaultOpen` — same pattern: closed by default on mobile. */
+  defaultOpen?: boolean;
 }) {
+  const [open, setOpen] = React.useState(defaultOpen);
+  /* Render-phase resync — same pattern as FleetPanel. Keeps the panel in
+     step with the mobile/desktop default when the viewport breakpoint
+     flips, without tripping the `set-state-in-effect` rule. */
+  const [prevDefault, setPrevDefault] = React.useState(defaultOpen);
+  if (prevDefault !== defaultOpen) {
+    setPrevDefault(defaultOpen);
+    setOpen(defaultOpen);
+  }
+
   const rows = aircraft
     .map((a) => ({ aircraft: a, inferred: inferDestination(a, snapshot) }))
     .filter((row) => row.inferred !== null);
 
+  /* Collapsed pill — pinned bottom-LEFT to mirror the Fleet pill on the
+     opposite side. Both can coexist on a phone without overlapping. */
+  if (!open) {
+    return (
+      <div className="absolute bottom-3 left-3 md:left-6 pointer-events-auto">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setOpen(true)}
+          className="bg-white/95 shadow-md"
+        >
+          <PlaneLanding className="h-3.5 w-3.5" />
+          Active ({rows.length})
+        </Button>
+      </div>
+    );
+  }
+
   if (rows.length === 0) {
     return (
-      <div className="absolute bottom-6 left-3 md:left-6 w-[calc(100vw-1.5rem)] sm:w-[330px] max-w-[330px] bg-white/98 border border-jx-border rounded-lg shadow-xl p-4 pointer-events-auto">
-        <div className="flex items-center gap-2 text-sm font-semibold text-jx-text">
-          <PlaneLanding className="h-4 w-4 text-jx-orange" />
-          Active destinations
+      <div className="absolute bottom-3 md:bottom-6 left-3 md:left-6 w-[calc(100vw-1.5rem)] sm:w-[330px] max-w-[330px] bg-white/98 border border-jx-border rounded-lg shadow-xl p-4 pointer-events-auto">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-sm font-semibold text-jx-text">
+            <PlaneLanding className="h-4 w-4 text-jx-orange" />
+            Active destinations
+          </div>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => setOpen(false)}
+            className="h-7 w-7"
+            aria-label="Collapse active destinations"
+          >
+            <ChevronDown className="h-3.5 w-3.5" />
+          </Button>
         </div>
         <p className="mt-2 text-xs text-jx-muted leading-relaxed">
           No tracked aircraft are currently flying toward a Jetex station.
@@ -98,15 +142,26 @@ export function ActiveDestinationsPanel({
   }
 
   return (
-    <div className="absolute bottom-6 left-3 md:left-6 w-[calc(100vw-1.5rem)] sm:w-[360px] max-w-[360px] bg-white/98 border border-jx-border rounded-lg shadow-xl pointer-events-auto overflow-hidden">
-      <div className="px-4 py-3 border-b border-jx-border bg-jx-panel">
-        <div className="flex items-center gap-2 text-sm font-semibold text-jx-text">
-          <PlaneLanding className="h-4 w-4 text-jx-orange" />
-          Active destinations ({rows.length})
+    <div className="absolute bottom-3 md:bottom-6 left-3 md:left-6 w-[calc(100vw-1.5rem)] sm:w-[360px] max-w-[360px] bg-white/98 border border-jx-border rounded-lg shadow-xl pointer-events-auto overflow-hidden">
+      <div className="px-4 py-3 border-b border-jx-border bg-jx-panel flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-sm font-semibold text-jx-text">
+            <PlaneLanding className="h-4 w-4 text-jx-orange" />
+            Active destinations ({rows.length})
+          </div>
+          <div className="text-[10px] text-jx-muted font-mono mt-0.5">
+            inferred from live heading + Jetex network geometry
+          </div>
         </div>
-        <div className="text-[10px] text-jx-muted font-mono mt-0.5">
-          inferred from live heading + Jetex network geometry
-        </div>
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={() => setOpen(false)}
+          className="h-7 w-7 shrink-0"
+          aria-label="Collapse active destinations"
+        >
+          <ChevronDown className="h-3.5 w-3.5" />
+        </Button>
       </div>
       <div className="divide-y divide-jx-border/60 max-h-[40vh] overflow-y-auto">
         {rows.map(({ aircraft, inferred }) => (

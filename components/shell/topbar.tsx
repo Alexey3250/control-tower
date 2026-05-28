@@ -1,8 +1,6 @@
 "use client";
 
-import { Bell } from "lucide-react";
 import { ROLES, useRole } from "@/lib/role-context";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -11,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { NotificationsBell } from "@/components/shell/notifications-bell";
 
 interface TopbarProps {
   title: string;
@@ -60,13 +59,10 @@ export function Topbar({ title, subtitle, meta }: TopbarProps) {
           </Select>
         </div>
 
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-4 w-4" />
-          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-jx-orange" />
-        </Button>
+        <NotificationsBell />
       </div>
 
-      <div className="md:hidden">
+      <div className="md:hidden flex items-center gap-1">
         <Select value={role} onValueChange={(v) => setRole(v as typeof role)}>
           <SelectTrigger className="h-8 px-2 text-xs w-[120px]">
             <SelectValue />
@@ -79,6 +75,7 @@ export function Topbar({ title, subtitle, meta }: TopbarProps) {
             ))}
           </SelectContent>
         </Select>
+        <NotificationsBell />
       </div>
     </header>
   );

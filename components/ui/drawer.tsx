@@ -26,35 +26,46 @@ DrawerOverlay.displayName = "DrawerOverlay";
 
 interface DrawerContentProps
   extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
-  side?: "left" | "right";
+  side?: "left" | "right" | "bottom";
 }
 
 const DrawerContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   DrawerContentProps
->(({ className, children, side = "right", ...props }, ref) => (
-  <DialogPrimitive.Portal>
-    <DrawerOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed z-50 h-full w-full max-w-md bg-jx-card border-jx-border shadow-2xl flex flex-col data-[state=open]:animate-in data-[state=closed]:animate-out",
-        side === "right" &&
-          "right-0 top-0 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
-        side === "left" &&
-          "left-0 top-0 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
-        className
-      )}
-      {...props}
-    >
-      {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 focus:outline-none">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
-  </DialogPrimitive.Portal>
-));
+>(({ className, children, side = "right", ...props }, ref) => {
+  const isBottom = side === "bottom";
+  return (
+    <DialogPrimitive.Portal>
+      <DrawerOverlay />
+      <DialogPrimitive.Content
+        ref={ref}
+        className={cn(
+          "fixed z-50 bg-jx-card border-jx-border shadow-2xl flex flex-col data-[state=open]:animate-in data-[state=closed]:animate-out",
+          /* Side drawers cover the full height; the bottom drawer is a
+             height-capped sheet anchored to the viewport bottom and is
+             responsible for its own rounded top corners. */
+          !isBottom && "h-full w-full max-w-md",
+          isBottom &&
+            "left-0 right-0 bottom-0 w-full max-h-[80vh] rounded-t-xl border-t",
+          side === "right" &&
+            "right-0 top-0 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
+          side === "left" &&
+            "left-0 top-0 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
+          side === "bottom" &&
+            "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+          className
+        )}
+        {...props}
+      >
+        {children}
+        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 focus:outline-none">
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </DialogPrimitive.Close>
+      </DialogPrimitive.Content>
+    </DialogPrimitive.Portal>
+  );
+});
 DrawerContent.displayName = "DrawerContent";
 
 const DrawerHeader = ({

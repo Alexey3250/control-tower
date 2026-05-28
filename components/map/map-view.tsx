@@ -13,8 +13,11 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import type { Feature, FeatureCollection, LineString, Polygon } from "geojson";
 import { useQuery } from "@tanstack/react-query";
 import {
+  AlertCircle,
   Cloud,
   FlaskConical,
+  Layers,
+  Loader2,
   MoonStar,
   ParkingSquare,
   Plane,
@@ -30,6 +33,7 @@ import {
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
+  DrawerTrigger,
 } from "@/components/ui/drawer";
 import { FleetPanel } from "./fleet-panel";
 import { ActiveDestinationsPanel } from "./active-destinations-panel";
@@ -45,6 +49,7 @@ import {
   greatCirclePolyline,
 } from "@/lib/sim/routes";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/lib/use-is-mobile";
 import type { AircraftState } from "@/lib/data/opensky";
 import type { StationKpiBundle, StationStatus } from "@/lib/types";
 
@@ -110,6 +115,7 @@ function colorForStatus(status: StationStatus) {
 
 export function MapView({ snapshot }: MapViewProps) {
   const mapRef = React.useRef<MapRef | null>(null);
+  const isMobile = useIsMobile();
   const [selectedIcao, setSelectedIcao] = React.useState<string | null>(null);
   const [hoveredIcao, setHoveredIcao] = React.useState<string | null>(null);
   const [hoveredAircraft, setHoveredAircraft] = React.useState<string | null>(
@@ -120,6 +126,14 @@ export function MapView({ snapshot }: MapViewProps) {
   const [trailsOn, setTrailsOn] = React.useState(true);
   const [terminatorOn, setTerminatorOn] = React.useState(true);
   const [mapZoom, setMapZoom] = React.useState<number>(INITIAL_ZOOM);
+  /* Tile-load state: MapLibre fires `load` once the basemap is ready.
+     We use this to flip the loading overlay from "Loading globe…" to
+     "Loading live data…" so the user knows what stage they're in. */
+  const [mapLoaded, setMapLoaded] = React.useState(false);
+  /* `layersOpen` controls the mobile "Layers" bottom sheet — the desktop
+     toolbar inlines all toggles, but on phones we condense to one icon
+     button that opens this sheet so the toolbar stops eating the map. */
+  const [layersOpen, setLayersOpen] = React.useState(false);
 
   /* Recompute the day/night terminator polygon every minute. Cheap maths
      (no network). Initial value is computed at first render. */
@@ -192,10 +206,15 @@ export function MapView({ snapshot }: MapViewProps) {
     () => new globalThis.Map()
   );
 
-  const { data: aircraftRes } = useQuery<AircraftResponse>({
+  const {
+    data: aircraftRes,
+    isLoading: aircraftLoading,
+    isError: aircraftError,
+  } = useQuery<AircraftResponse>({
     queryKey: ["live-aircraft"],
     queryFn: async () => {
       const res = await fetch("/api/aircraft", { cache: "no-store" });
+      if (!res.ok) throw new Error(`aircraft fetch failed: ${res.status}`);
       return res.json();
     },
     refetchInterval: 15_000,
@@ -338,6 +357,7 @@ export function MapView({ snapshot }: MapViewProps) {
           zoom: INITIAL_ZOOM,
         }}
         onMove={(e) => setMapZoom(e.viewState.zoom)}
+        onLoad={() => setMapLoaded(true)}
         attributionControl={{ compact: true }}
         style={{ width: "100%", height: "100%" }}
       >
@@ -773,29 +793,37 @@ export function MapView({ snapshot }: MapViewProps) {
         ) : null}
       </Map>
 
-      <div className="absolute top-3 md:top-4 left-3 md:left-4 right-3 md:right-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2 md:gap-3 pointer-events-none">
-        <div className="flex items-center gap-1.5 pointer-events-auto flex-wrap bg-white/90 backdrop-blur rounded-md border border-jx-border px-2 py-1.5 shadow-sm">
-          <Badge variant="gold" className="font-mono text-[10px] tracking-[0.18em]">
+      {/*
+        Top toolbar.
+        - Desktop: full two-cluster layout (status badges | layer toggles).
+        - Mobile: single condensed bar — small JETEX·status pill on the
+          left, single "Layers" icon on the right which opens a bottom
+          sheet containing every layer toggle. This stops a 5-button row
+          + 7-badge row from eating the upper half of a phone screen.
+      */}
+      <div className="absolute top-3 md:top-4 left-3 md:left-4 right-3 md:right-4 flex items-start md:items-center justify-between gap-2 md:gap-3 pointer-events-none">
+        <div className="flex items-center gap-1.5 pointer-events-auto flex-wrap bg-white/95 backdrop-blur rounded-md border border-jx-border px-2 py-1.5 shadow-sm max-w-[calc(100vw-7rem)] md:max-w-none overflow-x-auto">
+          <Badge variant="gold" className="font-mono text-[10px] tracking-[0.18em] shrink-0">
             JETEX · {snapshot.length}
           </Badge>
           <span className="mx-0.5 text-jx-subtle hidden md:inline">·</span>
-          <Badge variant="healthy" className="font-mono">
+          <Badge variant="healthy" className="font-mono shrink-0">
             {snapshot.filter((s) => s.current.status === "healthy").length}
           </Badge>
-          <Badge variant="watch" className="font-mono">
+          <Badge variant="watch" className="font-mono shrink-0">
             {snapshot.filter((s) => s.current.status === "watch").length}
           </Badge>
-          <Badge variant="critical" className="font-mono">
+          <Badge variant="critical" className="font-mono shrink-0">
             {snapshot.filter((s) => s.current.status === "critical").length}
           </Badge>
+          {/* Flying / parked / "+N at higher zoom" are useful but secondary —
+              hide on mobile to keep the pill compact. */}
           <span className="mx-0.5 text-jx-subtle hidden md:inline">·</span>
-          <Badge variant="outline" className="font-mono">
-            <span className="text-jx-healthy">{flying.length}</span>{" "}
-            <span className="hidden md:inline">flying</span>
+          <Badge variant="outline" className="font-mono hidden md:inline-flex">
+            <span className="text-jx-healthy">{flying.length}</span> flying
           </Badge>
-          <Badge variant="outline" className="font-mono">
-            <span className="text-jx-orange">{parked.length}</span>{" "}
-            <span className="hidden md:inline">parked</span>
+          <Badge variant="outline" className="font-mono hidden md:inline-flex">
+            <span className="text-jx-orange">{parked.length}</span> parked
           </Badge>
           {(() => {
             const hidden = snapshot.filter(
@@ -804,17 +832,17 @@ export function MapView({ snapshot }: MapViewProps) {
             return hidden > 0 ? (
               <Badge
                 variant="outline"
-                className="font-mono text-[10px] text-jx-muted"
+                className="font-mono text-[10px] text-jx-muted hidden md:inline-flex"
                 title="Zoom in to reveal smaller-tier destinations"
               >
-                +{hidden}{" "}
-                <span className="hidden md:inline">at higher zoom</span>
+                +{hidden} at higher zoom
               </Badge>
             ) : null;
           })()}
         </div>
 
-        <div className="flex items-center gap-1.5 pointer-events-auto flex-wrap">
+        {/* Desktop layer toggles — inline. */}
+        <div className="hidden md:flex items-center gap-1.5 pointer-events-auto flex-wrap">
           {/*
             Tailwind quirk reminder: when variant="gold" runs through cva, it
             sets `bg-accent text-accent-foreground` (orange + white). If we
@@ -829,8 +857,7 @@ export function MapView({ snapshot }: MapViewProps) {
             className={!aircraftOn ? "bg-white/95 text-jx-text" : ""}
           >
             <Plane className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Aircraft</span> ({onMap.length}/
-            {aircraft.length})
+            Aircraft ({onMap.length}/{aircraft.length})
           </Button>
           <Button
             size="sm"
@@ -840,8 +867,7 @@ export function MapView({ snapshot }: MapViewProps) {
             className={!trailsOn ? "bg-white/95 text-jx-text" : ""}
           >
             <Route className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Trails</span> (
-            {trailsGeoJson.features.length})
+            Trails ({trailsGeoJson.features.length})
           </Button>
           <Button
             size="sm"
@@ -855,7 +881,7 @@ export function MapView({ snapshot }: MapViewProps) {
             title="3 always-on simulated demo flights: DWC ↔ MIA, DWC ↔ IBZ, DWC ↔ PEK"
           >
             <FlaskConical className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">SIM</span> ({simPositions.length})
+            SIM ({simPositions.length})
           </Button>
           <Button
             size="sm"
@@ -869,7 +895,7 @@ export function MapView({ snapshot }: MapViewProps) {
             ) : (
               <Sun className="h-3.5 w-3.5" />
             )}
-            <span className="hidden sm:inline">Day/Night</span>
+            Day/Night
           </Button>
           <Button
             size="sm"
@@ -878,18 +904,129 @@ export function MapView({ snapshot }: MapViewProps) {
             className={!weatherOn ? "bg-white/95 text-jx-text" : ""}
           >
             <Cloud className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Weather</span>
+            Weather
           </Button>
         </div>
+
+        {/* Mobile: single Layers trigger opens a bottom sheet with all toggles. */}
+        <Drawer open={layersOpen} onOpenChange={setLayersOpen}>
+          <DrawerTrigger asChild>
+            <Button
+              size="sm"
+              variant="outline"
+              className="md:hidden pointer-events-auto bg-white/95 text-jx-text shrink-0 shadow-sm"
+              aria-label="Open map layers"
+            >
+              <Layers className="h-3.5 w-3.5" />
+              Layers
+            </Button>
+          </DrawerTrigger>
+          <DrawerContent side="bottom" className="max-h-[60vh]">
+            <DrawerHeader>
+              <DrawerTitle className="flex items-center gap-2">
+                <Layers className="h-4 w-4 text-jx-orange" />
+                Map layers
+              </DrawerTitle>
+            </DrawerHeader>
+            <DrawerBody className="space-y-2">
+              <LayerToggleRow
+                icon={<Plane className="h-4 w-4" />}
+                label="Aircraft"
+                hint={`${onMap.length} on map · ${aircraft.length} tracked`}
+                active={aircraftOn}
+                onToggle={() => setAircraftOn((v) => !v)}
+              />
+              <LayerToggleRow
+                icon={<Route className="h-4 w-4" />}
+                label="Trails"
+                hint={`${trailsGeoJson.features.length} active flight trails`}
+                active={trailsOn}
+                disabled={!aircraftOn}
+                onToggle={() => setTrailsOn((v) => !v)}
+              />
+              <LayerToggleRow
+                icon={<FlaskConical className="h-4 w-4" />}
+                label="Simulated flights"
+                hint={`${simPositions.length} demo · DWC ↔ MIA / IBZ / PEK`}
+                active={simOn}
+                accent="#1f6aa6"
+                onToggle={() => setSimOn((v) => !v)}
+              />
+              <LayerToggleRow
+                icon={
+                  terminatorOn ? (
+                    <MoonStar className="h-4 w-4" />
+                  ) : (
+                    <Sun className="h-4 w-4" />
+                  )
+                }
+                label="Day / Night"
+                hint={`Terminator at ${terminator.label}`}
+                active={terminatorOn}
+                onToggle={() => setTerminatorOn((v) => !v)}
+              />
+              <LayerToggleRow
+                icon={<Cloud className="h-4 w-4" />}
+                label="Weather"
+                hint="Per-station wind speed overlay"
+                active={weatherOn}
+                onToggle={() => setWeatherOn((v) => !v)}
+              />
+            </DrawerBody>
+          </DrawerContent>
+        </Drawer>
       </div>
+
+      {/*
+        Loading + error overlay.
+        Order of states:
+          1. Map tiles still rendering → "Loading globe…"
+          2. Tiles ready but aircraft endpoint hasn't returned → "Loading live data…"
+          3. Aircraft endpoint failed (rate-limit, network blip) → red banner.
+        Once aircraft data is in the cache, the overlay vanishes entirely.
+      */}
+      {!mapLoaded || (aircraftOn && aircraftLoading && !aircraftRes) ? (
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+          <div className="pointer-events-auto bg-white/96 backdrop-blur border border-jx-border rounded-lg shadow-xl px-5 py-4 flex items-center gap-3 max-w-[88vw]">
+            <Loader2 className="h-5 w-5 text-jx-orange animate-spin shrink-0" />
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-jx-text">
+                {!mapLoaded
+                  ? "Loading globe…"
+                  : "Loading live aircraft from OpenSky…"}
+              </div>
+              <div className="text-[11px] text-jx-muted">
+                {!mapLoaded
+                  ? "Fetching CARTO Voyager basemap tiles"
+                  : `${snapshot.length} Jetex destinations ready · streaming live state vectors`}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {aircraftError && aircraftOn ? (
+        <div className="absolute top-20 md:top-20 left-1/2 -translate-x-1/2 z-10 pointer-events-auto bg-red-50 border border-red-300 text-red-800 rounded-md px-3 py-2 text-xs shadow-md flex items-center gap-2 max-w-[88vw]">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          <span>
+            OpenSky unreachable — showing simulated flights only.{" "}
+            <span className="font-mono">retrying every 30s</span>
+          </span>
+        </div>
+      ) : null}
 
       {aircraftOn ? (
         <>
-        <ActiveDestinationsPanel aircraft={aircraft} snapshot={snapshot} />
+        <ActiveDestinationsPanel
+          aircraft={aircraft}
+          snapshot={snapshot}
+          defaultOpen={!isMobile}
+        />
         <FleetPanel
           aircraft={aircraft}
           fetchedAt={aircraftRes?.fetchedAt}
           onFocus={focusAircraft}
+          defaultOpen={!isMobile}
         />
         </>
       ) : null}
@@ -1092,5 +1229,78 @@ function KV({
       <span className="text-jx-muted">{label}</span>
       <span className="font-mono text-jx-text">{children}</span>
     </div>
+  );
+}
+
+/**
+ * Tap-friendly toggle row for the mobile "Layers" bottom sheet. Big hit
+ * area, clear on/off indicator, optional accent colour for non-orange
+ * layers like the blue simulated-flights track.
+ */
+function LayerToggleRow({
+  icon,
+  label,
+  hint,
+  active,
+  disabled,
+  accent,
+  onToggle,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  hint: string;
+  active: boolean;
+  disabled?: boolean;
+  accent?: string;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      disabled={disabled}
+      className={cn(
+        "w-full flex items-center gap-3 rounded-md border px-3 py-3 text-left transition-colors",
+        active
+          ? "border-jx-orange/50 bg-jx-orange-tint/60"
+          : "border-jx-border bg-white hover:bg-jx-panel/60",
+        disabled && "opacity-50 cursor-not-allowed"
+      )}
+      style={
+        active && accent
+          ? { borderColor: accent, background: `${accent}14` }
+          : undefined
+      }
+    >
+      <span
+        className={cn(
+          "shrink-0 h-9 w-9 rounded-md grid place-items-center",
+          active ? "bg-white" : "bg-jx-panel"
+        )}
+        style={active && accent ? { color: accent } : undefined}
+      >
+        {icon}
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-semibold text-jx-text leading-tight">
+          {label}
+        </div>
+        <div className="text-[11px] text-jx-muted leading-snug">{hint}</div>
+      </div>
+      <span
+        className={cn(
+          "shrink-0 text-[10px] font-bold tracking-[0.18em] uppercase px-2 py-0.5 rounded-full border",
+          active
+            ? "text-white border-transparent"
+            : "text-jx-muted bg-white border-jx-border"
+        )}
+        style={
+          active
+            ? { background: accent ?? "var(--jx-orange)" }
+            : undefined
+        }
+      >
+        {active ? "On" : "Off"}
+      </span>
+    </button>
   );
 }

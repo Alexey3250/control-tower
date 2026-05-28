@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import {
   buildLaunchTrackers,
   buildNetworkSnapshot,
@@ -13,32 +14,38 @@ import type { LaunchTracker, StationKpiBundle, VendorScore } from "@/lib/types";
  * later swap in: OpenSky for live traffic, NOAA Aviation Weather for
  * METAR/TAF, Open-Meteo for historical climate, and an internal store for
  * ops data — without touching screen code.
+ *
+ * Each accessor is wrapped in `React.cache()` so multiple Server Components
+ * in the same request share one snapshot (Suspense-friendly), and a
+ * module-level cache makes subsequent requests effectively free for the
+ * synthetic dataset.
  */
 
 let cachedNetwork: StationKpiBundle[] | null = null;
 let cachedLaunches: LaunchTracker[] | null = null;
 let cachedVendors: VendorScore[] | null = null;
 
-export function getNetworkSnapshot(): StationKpiBundle[] {
+export const getNetworkSnapshot = cache((): StationKpiBundle[] => {
   if (!cachedNetwork) cachedNetwork = buildNetworkSnapshot();
   return cachedNetwork;
-}
+});
 
-export function getStationBundle(icao: string): StationKpiBundle | undefined {
-  return getNetworkSnapshot().find(
-    (b) => b.station.icao.toUpperCase() === icao.toUpperCase()
-  );
-}
+export const getStationBundle = cache(
+  (icao: string): StationKpiBundle | undefined =>
+    getNetworkSnapshot().find(
+      (b) => b.station.icao.toUpperCase() === icao.toUpperCase()
+    )
+);
 
-export function getLaunchTrackers(): LaunchTracker[] {
+export const getLaunchTrackers = cache((): LaunchTracker[] => {
   if (!cachedLaunches) cachedLaunches = buildLaunchTrackers();
   return cachedLaunches;
-}
+});
 
-export function getVendors(): VendorScore[] {
+export const getVendors = cache((): VendorScore[] => {
   if (!cachedVendors) cachedVendors = buildVendors();
   return cachedVendors;
-}
+});
 
 export function getStations() {
   return STATIONS;
@@ -68,7 +75,7 @@ export interface NetworkAggregate {
   totalOpenIncidents: number;
 }
 
-export function getNetworkAggregate(): NetworkAggregate {
+export const getNetworkAggregate = cache((): NetworkAggregate => {
   const net = getNetworkSnapshot();
   const totalTurns = net.reduce((s, b) => s + b.current.turnsLast24h, 0);
   const totalPax = net.reduce((s, b) => s + b.current.paxLast24h, 0);
@@ -120,4 +127,4 @@ export function getNetworkAggregate(): NetworkAggregate {
     totalVendorBreaches: totalBreaches,
     totalOpenIncidents: net.reduce((s, b) => s + b.current.openIncidents, 0),
   };
-}
+});

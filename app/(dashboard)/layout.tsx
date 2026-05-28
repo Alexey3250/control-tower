@@ -1,6 +1,7 @@
 import { Sidenav } from "@/components/shell/sidenav";
 import { MobileNav } from "@/components/shell/mobile-nav";
 import { PortfolioFooter } from "@/components/shell/portfolio-footer";
+import { RoutePrefetcher } from "@/components/shell/route-prefetcher";
 
 export default function DashboardLayout({
   children,
@@ -31,6 +32,10 @@ export default function DashboardLayout({
         {children}
         <PortfolioFooter />
       </main>
+      {/* Warms every top-level route's RSC payload during browser idle
+          time, so clicking a sidenav tab is "instant" — see
+          components/shell/route-prefetcher.tsx for details. */}
+      <RoutePrefetcher />
     </div>
   );
 }

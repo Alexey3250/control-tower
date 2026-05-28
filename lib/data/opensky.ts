@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import {
   FLEET,
   type FleetAircraft,
@@ -102,7 +103,7 @@ function authHeader(): HeadersInit | undefined {
  * data for (those come back as `status: "offline"`). The UI uses this to
  * render flying / parked / offline aircraft consistently.
  */
-export async function getFleetStates(): Promise<AircraftState[]> {
+export const getFleetStates = cache(async (): Promise<AircraftState[]> => {
   if (FLEET.length === 0) return [];
 
   const params = new URLSearchParams();
@@ -110,10 +111,16 @@ export async function getFleetStates(): Promise<AircraftState[]> {
 
   let live: Record<string, ReturnType<typeof parseStateVector>> = {};
   try {
+    /* Short timeout — OpenSky regularly stalls for >10s on anonymous
+       requests. If it's slow, return empty live state and let the UI
+       fall back to "offline" rather than hanging the whole page. */
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 6_000);
     const res = await fetch(`${OPENSKY_BASE}/states/all?${params.toString()}`, {
       headers: authHeader(),
+      signal: ctrl.signal,
       next: { revalidate: 15, tags: ["opensky-states"] },
-    });
+    }).finally(() => clearTimeout(timer));
     if (res.ok) {
       const json = (await res.json()) as { states: unknown[][] | null };
       for (const row of json.states ?? []) {
@@ -199,7 +206,7 @@ export async function getFleetStates(): Promise<AircraftState[]> {
   });
 
   return [...realStates, ...simStates];
-}
+});
 
 export function getFleetAircraft(icao24: string): FleetAircraft | undefined {
   return FLEET.find((a) => a.icao24.toLowerCase() === icao24.toLowerCase());

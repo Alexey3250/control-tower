@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink, MapPin, PlaneTakeoff } from "lucide-react";
@@ -24,6 +25,7 @@ import {
 import { FLEET_UI_STATUS_LABELS } from "@/config/fleet";
 import { getStation } from "@/config/network";
 import { mToFt, msToKt, nearestStation } from "@/lib/geo";
+import { Skeleton, LiveDataPulse } from "@/components/ui/skeleton";
 
 export const dynamic = "force-dynamic";
 
@@ -53,28 +55,15 @@ export default async function FleetDetailPage({
   const meta = getFleetAircraft(icao24);
   if (!meta) notFound();
 
-  const [states, flights] = await Promise.all([
-    getFleetStates(),
-    getAircraftFlights(icao24, 168),
-  ]);
-  const state = states.find((a) => a.icao24 === icao24.toLowerCase());
-  const nearest =
-    state?.lat !== null && state?.lon !== null && state
-      ? nearestStation(state.lat, state.lon)
-      : null;
-  const topAirports = rankAirports(flights);
-
   return (
     <div className="flex-1 flex flex-col min-w-0">
       <Topbar
         title={`${meta.tail} · ${meta.typeCode}`}
         subtitle={`${meta.model} · ${meta.jetexRelationship} · confidence ${meta.confidence.replace("_", "·")}`}
         meta={
-          state ? (
-            <Badge variant={statusVariant(state.status)}>{state.status}</Badge>
-          ) : (
-            <Badge variant="secondary">offline</Badge>
-          )
+          <Suspense fallback={<Badge variant="outline">Live state…</Badge>}>
+            <LiveStatusBadge icao24={icao24} />
+          </Suspense>
         }
       />
 
@@ -94,118 +83,61 @@ export default async function FleetDetailPage({
           </Button>
         </div>
 
+        {/* Static identity grid — renders instantly from the FLEET roster.
+            ICAO24 is known synchronously; live position streams below. */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           <Metric label="ICAO24" value={meta.icao24} />
-          <Metric
-            label="Current location"
-            value={
-              nearest
-                ? `${nearest.station.icao} · ${nearest.station.city}`
-                : state?.lat !== null && state?.lon !== null && state
-                  ? `${state.lat.toFixed(2)}, ${state.lon.toFixed(2)}`
-                  : "No live OpenSky position"
-            }
-          />
-          <Metric
-            label="Altitude"
-            value={
-              state?.baroAltitudeM !== null && state?.baroAltitudeM !== undefined
-                ? `${Math.round(mToFt(state.baroAltitudeM)).toLocaleString()} ft`
-                : "—"
-            }
-          />
-          <Metric
-            label="Speed"
-            value={
-              state?.velocityMs !== null && state?.velocityMs !== undefined
-                ? `${Math.round(msToKt(state.velocityMs))} kt`
-                : "—"
-            }
-          />
+          <Suspense fallback={<MetricSkeleton label="Current location" />}>
+            <LivePositionMetric icao24={icao24} field="location" />
+          </Suspense>
+          <Suspense fallback={<MetricSkeleton label="Altitude" />}>
+            <LivePositionMetric icao24={icao24} field="altitude" />
+          </Suspense>
+          <Suspense fallback={<MetricSkeleton label="Speed" />}>
+            <LivePositionMetric icao24={icao24} field="speed" />
+          </Suspense>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-          <Card className="xl:col-span-2">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Flights · last 7 days</CardTitle>
-              <Badge variant="outline" className="font-mono">
-                {flights.length} records
-              </Badge>
-            </CardHeader>
-            <CardContent>
-              <FlightHistoryChart flights={flights} />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Top airports</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {topAirports.length ? (
-                topAirports.map((a) => (
-                  <div
-                    key={a.icao}
-                    className="flex items-center justify-between border-b border-jx-border/60 py-1.5 last:border-0"
-                  >
-                    <span className="font-mono text-jx-text">{a.icao}</span>
-                    <span className="text-xs text-jx-muted">{a.count} visits</span>
-                  </div>
-                ))
-              ) : (
-                <div className="text-sm text-jx-muted">
-                  No airport candidates in OpenSky flight history.
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <Suspense
+            fallback={<ChartFallback />}
+          >
+            <FlightHistorySection icao24={icao24} />
+          </Suspense>
+          <Suspense
+            fallback={
+              <Card>
+                <CardHeader>
+                  <CardTitle>Top airports</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-5 w-full" />
+                  ))}
+                </CardContent>
+              </Card>
+            }
+          >
+            <TopAirportsSection icao24={icao24} />
+          </Suspense>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent flight records</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Departure</TableHead>
-                  <TableHead>Arrival</TableHead>
-                  <TableHead>Callsign</TableHead>
-                  <TableHead>First seen</TableHead>
-                  <TableHead>Last seen</TableHead>
-                  <TableHead className="text-right">Duration</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {flights.slice(0, 20).map((f) => (
-                  <TableRow key={`${f.firstSeen}-${f.lastSeen}`}>
-                    <TableCell>{airportLabel(f.estDepartureAirport)}</TableCell>
-                    <TableCell>{airportLabel(f.estArrivalAirport)}</TableCell>
-                    <TableCell className="font-mono">{f.callsign ?? "—"}</TableCell>
-                    <TableCell className="text-xs text-jx-muted">
-                      {fmtTime(f.firstSeen)}
-                    </TableCell>
-                    <TableCell className="text-xs text-jx-muted">
-                      {fmtTime(f.lastSeen)}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {duration(f)}
-                    </TableCell>
-                  </TableRow>
+        <Suspense
+          fallback={
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent flight records</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-2">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <Skeleton key={i} className="h-7 w-full" />
                 ))}
-                {flights.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-jx-muted py-8">
-                      No OpenSky flight history returned for this ICAO24 in the
-                      last 7 days.
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          }
+        >
+          <RecentFlightsSection icao24={icao24} />
+        </Suspense>
 
         <Card>
           <CardHeader>
@@ -276,6 +208,156 @@ export default async function FleetDetailPage({
   );
 }
 
+/*
+ * Streaming sections. Thanks to React.cache() in getFleetStates and
+ * getAircraftFlights, multiple Suspense boundaries that reference the
+ * same call dedupe into a single in-flight request — so the cost of
+ * splitting the page like this is zero.
+ */
+
+async function LiveStatusBadge({ icao24 }: { icao24: string }) {
+  const states = await getFleetStates();
+  const state = states.find((a) => a.icao24 === icao24.toLowerCase());
+  if (!state) return <Badge variant="secondary">offline</Badge>;
+  return <Badge variant={statusVariant(state.status)}>{state.status}</Badge>;
+}
+
+async function LivePositionMetric({
+  icao24,
+  field,
+}: {
+  icao24: string;
+  field: "location" | "altitude" | "speed";
+}) {
+  const states = await getFleetStates();
+  const state = states.find((a) => a.icao24 === icao24.toLowerCase());
+
+  if (field === "location") {
+    const nearest =
+      state?.lat !== null && state?.lon !== null && state
+        ? nearestStation(state.lat, state.lon)
+        : null;
+    const value = nearest
+      ? `${nearest.station.icao} · ${nearest.station.city}`
+      : state?.lat !== null && state?.lon !== null && state
+        ? `${state.lat.toFixed(2)}, ${state.lon.toFixed(2)}`
+        : "No live OpenSky position";
+    return <Metric label="Current location" value={value} />;
+  }
+  if (field === "altitude") {
+    const value =
+      state?.baroAltitudeM !== null && state?.baroAltitudeM !== undefined
+        ? `${Math.round(mToFt(state.baroAltitudeM)).toLocaleString()} ft`
+        : "—";
+    return <Metric label="Altitude" value={value} />;
+  }
+  const value =
+    state?.velocityMs !== null && state?.velocityMs !== undefined
+      ? `${Math.round(msToKt(state.velocityMs))} kt`
+      : "—";
+  return <Metric label="Speed" value={value} />;
+}
+
+async function FlightHistorySection({ icao24 }: { icao24: string }) {
+  const flights = await getAircraftFlights(icao24, 168);
+  return (
+    <Card className="xl:col-span-2">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Flights · last 7 days</CardTitle>
+        <Badge variant="outline" className="font-mono">
+          {flights.length} records
+        </Badge>
+      </CardHeader>
+      <CardContent>
+        <FlightHistoryChart flights={flights} />
+      </CardContent>
+    </Card>
+  );
+}
+
+async function TopAirportsSection({ icao24 }: { icao24: string }) {
+  const flights = await getAircraftFlights(icao24, 168);
+  const topAirports = rankAirports(flights);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Top airports</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {topAirports.length ? (
+          topAirports.map((a) => (
+            <div
+              key={a.icao}
+              className="flex items-center justify-between border-b border-jx-border/60 py-1.5 last:border-0"
+            >
+              <span className="font-mono text-jx-text">{a.icao}</span>
+              <span className="text-xs text-jx-muted">{a.count} visits</span>
+            </div>
+          ))
+        ) : (
+          <div className="text-sm text-jx-muted">
+            No airport candidates in OpenSky flight history.
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+async function RecentFlightsSection({ icao24 }: { icao24: string }) {
+  const flights = await getAircraftFlights(icao24, 168);
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Recent flight records</CardTitle>
+        <LiveDataPulse label={`${flights.length} records`} />
+      </CardHeader>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Departure</TableHead>
+              <TableHead>Arrival</TableHead>
+              <TableHead>Callsign</TableHead>
+              <TableHead>First seen</TableHead>
+              <TableHead>Last seen</TableHead>
+              <TableHead className="text-right">Duration</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {flights.slice(0, 20).map((f) => (
+              <TableRow key={`${f.firstSeen}-${f.lastSeen}`}>
+                <TableCell>{airportLabel(f.estDepartureAirport)}</TableCell>
+                <TableCell>{airportLabel(f.estArrivalAirport)}</TableCell>
+                <TableCell className="font-mono">
+                  {f.callsign ?? "—"}
+                </TableCell>
+                <TableCell className="text-xs text-jx-muted">
+                  {fmtTime(f.firstSeen)}
+                </TableCell>
+                <TableCell className="text-xs text-jx-muted">
+                  {fmtTime(f.lastSeen)}
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {duration(f)}
+                </TableCell>
+              </TableRow>
+            ))}
+            {flights.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center text-jx-muted py-8">
+                  No OpenSky flight history returned for this ICAO24 in the
+                  last 7 days.
+                </TableCell>
+              </TableRow>
+            ) : null}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <Card>
@@ -285,6 +367,34 @@ function Metric({ label, value }: { label: string; value: string }) {
           {label}
         </div>
         <div className="mt-1 font-mono text-lg text-jx-text">{value}</div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MetricSkeleton({ label }: { label: string }) {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-jx-muted">
+          <PlaneTakeoff className="h-3 w-3" />
+          {label}
+        </div>
+        <Skeleton className="mt-1.5 h-5 w-32" />
+      </CardContent>
+    </Card>
+  );
+}
+
+function ChartFallback() {
+  return (
+    <Card className="xl:col-span-2">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Flights · last 7 days</CardTitle>
+        <LiveDataPulse label="Streaming OpenSky" />
+      </CardHeader>
+      <CardContent>
+        <Skeleton className="h-48 w-full" />
       </CardContent>
     </Card>
   );

@@ -78,6 +78,27 @@ async function main() {
   } catch {
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
   }
+  /* On the operations map specifically, MapLibre needs SwiftShader to
+     finish rendering tiles before the page is interesting to screenshot.
+     We wait for the loading overlay to disappear (which only happens once
+     `mapLoaded` flips and live data lands) before falling back to the
+     fixed timer. */
+  if (route.startsWith("/map")) {
+    try {
+      await page.waitForFunction(
+        () => !document.body.textContent?.includes("Loading globe"),
+        undefined,
+        { timeout: 25_000 }
+      );
+      await page.waitForFunction(
+        () => !document.body.textContent?.includes("Loading live aircraft"),
+        undefined,
+        { timeout: 25_000 }
+      );
+    } catch {
+      /* fall through to the timer-based wait below */
+    }
+  }
   await page.waitForTimeout(Number(waitMs));
   const buf = await page.screenshot({ fullPage: true, type: "png" });
   await writeFile(join(OUT, file), buf);

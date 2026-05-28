@@ -88,7 +88,7 @@ export function Sidenav() {
           <Plane className="h-5 w-5 text-white" strokeWidth={2.2} />
         </div>
         <div className="leading-tight">
-          <div className="text-lg font-extrabold tracking-[0.05em] text-jx-text">
+          <div className="text-lg font-extrabold tracking-wider text-jx-text">
             JETEX
           </div>
           <div className="text-[10px] uppercase tracking-[0.18em] text-jx-orange font-semibold">
@@ -135,8 +135,16 @@ export function Sidenav() {
           <div className="mt-1 text-xs text-jx-text">{role}</div>
         </div>
         <div>
-          <div className="text-[10px] uppercase tracking-[0.18em] text-jx-subtle">
-            Live data feeds
+          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-jx-subtle">
+            <span
+              aria-hidden
+              className="relative inline-flex h-1.5 w-1.5"
+              title="Live feeds are polling"
+            >
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-jx-healthy opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-jx-healthy" />
+            </span>
+            <span>Live data feeds</span>
           </div>
           <div className="mt-1 text-xs text-jx-muted leading-relaxed">
             OpenSky · NOAA · Open-Meteo · OurAirports

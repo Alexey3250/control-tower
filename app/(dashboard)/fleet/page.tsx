@@ -1,53 +1,39 @@
+import { Suspense } from "react";
 import { Plane, Radio, ShieldQuestion, ParkingSquare, Layers } from "lucide-react";
 import { Topbar } from "@/components/shell/topbar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FleetTable } from "@/components/fleet/fleet-table";
 import { getFleetStates } from "@/lib/data/opensky";
-import { FLEET_LAYERS } from "@/config/fleet";
+import { FLEET, FLEET_LAYERS } from "@/config/fleet";
+import {
+  KpiStripSkeleton,
+  TableSkeleton,
+} from "@/components/shell/skeletons";
+import { LiveDataPulse } from "@/components/ui/skeleton";
 
+/*
+ * Fleet page is the slowest page in the app (OpenSky `states/all` request
+ * can take 1-6s on the anonymous tier). We split it so the static chrome
+ * — Topbar, layer legend — renders instantly from the cached FLEET
+ * roster, and the *live* parts (KPI strip + table) stream in via
+ * <Suspense> on their own async server component.
+ */
 export const dynamic = "force-dynamic";
 
-export default async function FleetPage() {
-  const aircraft = await getFleetStates();
-  const flying = aircraft.filter((a) => a.status === "flying").length;
-  const parked = aircraft.filter((a) => a.status === "parked").length;
-  const offline = aircraft.filter((a) => a.status === "offline").length;
-
+export default function FleetPage() {
   return (
     <div className="flex-1 flex flex-col min-w-0">
       <Topbar
         title="Fleet Intelligence"
-        subtitle={`${aircraft.length} tracked aircraft · ${flying} flying · ${parked} parked · ${offline} offline`}
+        subtitle={`${FLEET.length} aircraft in roster · live state from OpenSky`}
         meta={<Badge variant="outline">OpenSky live state</Badge>}
       />
 
       <div className="flex-1 p-4 md:p-6 space-y-5 md:space-y-6">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-          <FleetStat
-            label="Tracked aircraft"
-            value={aircraft.length}
-            icon={<Plane className="h-4 w-4" />}
-          />
-          <FleetStat
-            label="Flying now"
-            value={flying}
-            tone="healthy"
-            icon={<Radio className="h-4 w-4" />}
-          />
-          <FleetStat
-            label="Parked / ground"
-            value={parked}
-            tone="gold"
-            icon={<ParkingSquare className="h-4 w-4" />}
-          />
-          <FleetStat
-            label="Offline"
-            value={offline}
-            tone="muted"
-            icon={<ShieldQuestion className="h-4 w-4" />}
-          />
-        </div>
+        <Suspense fallback={<KpiStripSkeleton count={4} />}>
+          <FleetStatsStrip />
+        </Suspense>
 
         <Card>
           <CardContent className="p-4 md:p-5 space-y-3">
@@ -74,11 +60,9 @@ export default async function FleetPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4 md:p-5">
-            <FleetTable aircraft={aircraft} />
-          </CardContent>
-        </Card>
+        <Suspense fallback={<TableSkeleton rows={10} cols={6} />}>
+          <FleetTableSection />
+        </Suspense>
 
         <p className="text-xs text-jx-muted">
           Offline means OpenSky has no current open-feed state vector for that
@@ -87,6 +71,58 @@ export default async function FleetPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+async function FleetStatsStrip() {
+  const aircraft = await getFleetStates();
+  const flying = aircraft.filter((a) => a.status === "flying").length;
+  const parked = aircraft.filter((a) => a.status === "parked").length;
+  const offline = aircraft.filter((a) => a.status === "offline").length;
+
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+      <FleetStat
+        label="Tracked aircraft"
+        value={aircraft.length}
+        icon={<Plane className="h-4 w-4" />}
+      />
+      <FleetStat
+        label="Flying now"
+        value={flying}
+        tone="healthy"
+        icon={<Radio className="h-4 w-4" />}
+      />
+      <FleetStat
+        label="Parked / ground"
+        value={parked}
+        tone="gold"
+        icon={<ParkingSquare className="h-4 w-4" />}
+      />
+      <FleetStat
+        label="Offline"
+        value={offline}
+        tone="muted"
+        icon={<ShieldQuestion className="h-4 w-4" />}
+      />
+    </div>
+  );
+}
+
+async function FleetTableSection() {
+  const aircraft = await getFleetStates();
+  return (
+    <Card>
+      <CardContent className="p-4 md:p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="text-[10px] uppercase tracking-wider text-jx-muted font-semibold">
+            Live aircraft state
+          </div>
+          <LiveDataPulse label={`${aircraft.length} aircraft`} />
+        </div>
+        <FleetTable aircraft={aircraft} />
+      </CardContent>
+    </Card>
   );
 }
 
